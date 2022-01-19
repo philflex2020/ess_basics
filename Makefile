@@ -14,7 +14,7 @@ $(info MAKEFILE_LIST="$(MAKEFILE_LIST)")
 # dirname `which g++`
 
  
-BINS = dnp3_utils
+BINS = ess_basics
 BIN_DIR = /usr/local/bin/
 INCLUDES_DIR = /usr/local/include/
 SINCLUDES_DIR= /usr/include/
@@ -75,7 +75,7 @@ $(OBJ_DIR)libdmap.o:	$(PROJECT_ROOT)src/dnp3_utils.cpp $(PROJECT_ROOT)include/dn
 	$(CXX) -c $(CPPFLAGS) -fpic -o $@ $< $(INCLUDES_BUILD)
 
 
-$(BUILD_DIR)dnp3_utils: $(OBJ_DIR)dnp3_utils_main.o 
+$(BUILD_DIR)ess_basics: $(OBJ_DIR)ess_basics.o 
 	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS) -ldmap
 
  
