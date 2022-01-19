@@ -1,0 +1,5 @@
+/usr/local/bin/fims_send  -m set  -u /system/data/var1 '{"hello var1 from me"}'
+/usr/local/bin/fims_send  -m set  -u /system/data '{"var2":"hello var2 from me"}'
+/usr/local/bin/fims_send  -m set  -u /system/data '{"var3":{"value":"hello var3 from me"}}'
+/usr/local/bin/fims_send  -m set  -u /system/data/var4 '{"value":"hello var4 from me"}'
+/usr/local/bin/fims_send  -m set  -u /system/data/var5 '{"value":5}'

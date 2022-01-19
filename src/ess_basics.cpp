@@ -10,10 +10,10 @@
 *base_uri is set by /components + sys_cfg.name
 */
 /*
- * dnp3_utils_main.cpp
+ * ess_basics.cpp
  *
  *  Created on: jan 16, 2022
- *      Author: pwilshire - dnp3 version
+ *      Author: pwilshire - new version no dnp3 stuff in it
  */
 
 #include <stdio.h>
@@ -39,7 +39,6 @@
 
 #include <iostream>
 #include "simdjson.h" // for json parsing
-#include "dnp3_utils.h"
 
 
 using namespace std; 
@@ -51,7 +50,12 @@ using namespace std;
 volatile bool running = true;
 int num_configs = 0;
 #define MAX_CONFIGS 16
-sysCfg *sys_cfg[MAX_CONFIGS];
+//sysCfg *sys_cfg[MAX_CONFIGS];
+
+#ifndef FPS_ERROR_PRINT 
+#define FPS_ERROR_PRINT printf
+#define FPS_DEBUG_PRINT printf
+#endif
 
 void signal_handler (int sig)
 {
@@ -60,45 +64,7 @@ void signal_handler (int sig)
     signal(sig, SIG_DFL);
 }
 
-// this runs whn we get a "set" on a defined value
-// the data is immediately send to the outstation.
-// these are all scaled and signed if neded onto the wire
 
-void addVarToCommands (void * commands, std::pair<DbVar*,int>dbp)
-{
-    DbVar* db = dbp.first;
-    //int flag = dbp.second;
-
-    switch (db->type) 
-    {
-        case Type_Crob:
-        {
-          //  commands.Add<ControlRelayOutputBlock>({WithIndex(ControlRelayOutputBlock(ControlCodeFromType(db->crob)), db->idx)});
-            break;
-        }
-        case AnIn16:
-        {
-            //int16_t anInt16  = getInt16Val(db);
-            //commands.Add<AnalogOutputInt16>({WithIndex(AnalogOutputInt16(anInt16), db->idx)});
-            break;
-        }
-        case AnIn32:
-        {
-            //int32_t anInt32  = getInt32Val(db);
-            //commands.Add<AnalogOutputInt32>({WithIndex(AnalogOutputInt32(anInt32), db->idx)});
-            //commands.Add<AnalogOutputInt32>({WithIndex(AnalogOutputInt32(ival, db->idx)});
-            break;
-        }
-        case AnF32:
-        {
-            //double anF32  = getF32Val(db);
-            //commands.Add<AnalogOutputFloat32>({WithIndex(AnalogOutputFloat32(anF32), db->idx)});
-            break;
-        }
-        default:
-            break;
-    }
-}
 
 class dbSj;
 
@@ -526,7 +492,6 @@ int main(int argc, char *argv[])
     }
 
     {
-        int fims_connect  = 0;
         char tmp[1024];
         snprintf(tmp, sizeof(tmp),"DNP3_M_%s", "test");
         while(fims_connect < MAX_FIMS_CONNECT && p_fims->Connect(tmp) == false)
@@ -542,183 +507,196 @@ int main(int argc, char *argv[])
         p_fims->Close();
         return 1;
     }
-
-    FPS_ERROR_PRINT(" System completed OK\n");
-    return false;
-    
-
-    num_configs = getConfigs(argc, argv, (sysCfg**)&sys_cfg, 0, p_fims);
-
-    
-    const char **subs = NULL;
-    bool *bpubs = NULL;
-    
-     // TODO make this ppen to subs. Perhaps we need a vector
-    // components is pulled by uri  repeat for exch config
-    int num = getSysUris((sysCfg **)&sys_cfg, 0, subs, bpubs, num_configs);
-    if(num < 0)
-    {
-        FPS_ERROR_PRINT("Failed to create subs array.\n");
-        return 1;
-    }
-
-    if (p_fims == NULL)
-    {
-        FPS_ERROR_PRINT("Failed to allocate connection to FIMS server.\n");
-        //rc = 1;
-        return 1;//goto cleanup;
-    }
-    // use the id for fims connect bt also add master designation 
-    {
-        char tmp[1024];
-        snprintf(tmp, sizeof(tmp),"DNP3_M_%s", sys_cfg[0]->id);
-        while(fims_connect < MAX_FIMS_CONNECT && p_fims->Connect(tmp) == false)
-        {
-            fims_connect++;
-            sleep(1);
-        }
-    }
-
-    if(fims_connect >= MAX_FIMS_CONNECT)
-    {
-        FPS_ERROR_PRINT("Failed to establish connection to FIMS server.\n");
-        return 1;
-    }
-
-    FPS_DEBUG_PRINT("Map configured: Initializing data.\n");
-    //if(p_fims->Subscribe((const char**)sub_array, 3, (bool *)publish_only) == false)
-    if(p_fims->Subscribe((const char**)subs, num, (bool *)bpubs) == false)
-    {
-        FPS_ERROR_PRINT("Subscription failed.\n");
-        p_fims->Close();
-        return 1;
-    }
-    FPS_ERROR_PRINT("Number of subscriptions %d.\n", num);
-    for (int is = 0 ; is < num ; is++)
-    {
-        FPS_ERROR_PRINT(" subscriptions %d is [%s]\n", is, subs[is]);
-    }
-
-    free((void *)bpubs);
-    free((void *)subs);
     while(running && p_fims->Connected())
     {
         // once a second
         fims_message* msg = p_fims->Receive_Timeout(1000);
-        //sysCfg *sys = sys_cfg[0];
-        if(msg != NULL)
+        if(msg)
         {
-            for (int ixs = 0 ; ixs < num_configs; ixs++ )
-            {
-                sysCfg *sys = sys_cfg[ixs];
-            
-                dbs_type dbs; // collect all the parsed vars here
-                // We can use a single dbs 
-                cJSON* cjb = parseBody(dbs, sys, msg, DNP3_MASTER);
-
-                if(dbs.size() > 0)
-                {
-                    int commands;
-                    int numCmds = 0;
-                    cJSON*cj = NULL;                
-                    if((msg->replyto != NULL) && (strcmp(msg->method,"pub") != 0))
-                        cj = cJSON_CreateObject();
-
-                    while (!dbs.empty())
-                    {
-                        std::pair<DbVar*,int>dbp = dbs.back();
-                        // only do this on sets or posts
-                        if ((strcmp(msg->method,"set") == 0) || (strcmp(msg->method,"post") == 0))
-                        {
-                            addVarToCommands(&commands, dbp);
-                            numCmds++;
-                        }
-                        if(cj) addVarToCj(cj, dbp);
-                        dbs.pop_back();
-                    }
-
-                    if(cj)
-                    {
-                        const char* reply = cJSON_PrintUnformatted(cj);
-                        cJSON_Delete(cj);
-                        cj = NULL;
-                        // TODO check that SET is the correct thing to do in MODBUS_CLIENT
-                        // probably OK since this is a reply
-                        if(msg->replyto)
-                            p_fims->Send("set", msg->replyto, NULL, reply);
-
-                        free((void* )reply);
-                    }
-                    if(numCmds > 0)
-                    {
-                        FPS_DEBUG_PRINT("      *****Running Direct Outputs \n");
-                        //sys->master->DirectOperate(std::move(commands), fpsCommandCallback::Get());
-                    }
-                }
-            
-                // TODO master has to be assigned per config
-                if (sys->scanreq > 0)
-                {
-                    switch (sys->scanreq)
-                    {
-                        case 1:
-                        {
-                            //sys->master->ScanClasses(ClassField(ClassField::CLASS_1));
-                            break;
-                        }
-                        case 2:
-                        {
-                            //sys->master->ScanClasses(ClassField(ClassField::CLASS_2));
-                            break;
-                        }
-                        case 3:
-                        {
-                            //sys->master->ScanClasses(ClassField(ClassField::CLASS_3));
-                            break;
-                        }
-                        default:
-                            break;
-                    }
-                    FPS_ERROR_PRINT("****** master scanreq %d serviced\n", sys->scanreq);
-                    sys->scanreq = 0;
-                }
-
-                if (cjb != NULL)
-                {
-                    cJSON_Delete(cjb);
-                }
-            }
+            FPS_ERROR_PRINT(" got a fims message type [%s]", msg->method);
+            FPS_ERROR_PRINT(" uri [%s]", msg->uri);
+            if(msg->body) FPS_ERROR_PRINT(" body [%s]", msg->body);
+            FPS_ERROR_PRINT("\n");
             p_fims->free_message(msg);
         }
     }
+    FPS_ERROR_PRINT(" System completed OK\n");
+    if(p_fims)p_fims->Close();
+    return 0;
+    
 
-    //cleanup:
-    // if (manager){
-    //     delete manager;
-    //     //delete channel;
+    // num_configs = getConfigs(argc, argv, (sysCfg**)&sys_cfg, 0, p_fims);
+
+    
+    // const char **subs = NULL;
+    // bool *bpubs = NULL;
+    
+    //  // TODO make this ppen to subs. Perhaps we need a vector
+    // // components is pulled by uri  repeat for exch config
+    // int num = getSysUris((sysCfg **)&sys_cfg, 0, subs, bpubs, num_configs);
+    // if(num < 0)
+    // {
+    //     FPS_ERROR_PRINT("Failed to create subs array.\n");
+    //     return 1;
     // }
-    if (p_fims) delete p_fims;
-    // sys_cfg should clean itself up
+
+    // if (p_fims == NULL)
+    // {
+    //     FPS_ERROR_PRINT("Failed to allocate connection to FIMS server.\n");
+    //     //rc = 1;
+    //     return 1;//goto cleanup;
+    // }
+    // // use the id for fims connect bt also add master designation 
+    // {
+    //     char tmp[1024];
+    //     snprintf(tmp, sizeof(tmp),"DNP3_M_%s", sys_cfg[0]->id);
+    //     while(fims_connect < MAX_FIMS_CONNECT && p_fims->Connect(tmp) == false)
+    //     {
+    //         fims_connect++;
+    //         sleep(1);
+    //     }
+    // }
+
+    // if(fims_connect >= MAX_FIMS_CONNECT)
+    // {
+    //     FPS_ERROR_PRINT("Failed to establish connection to FIMS server.\n");
+    //     return 1;
+    // }
+
+    // FPS_DEBUG_PRINT("Map configured: Initializing data.\n");
+    // //if(p_fims->Subscribe((const char**)sub_array, 3, (bool *)publish_only) == false)
+    // if(p_fims->Subscribe((const char**)subs, num, (bool *)bpubs) == false)
+    // {
+    //     FPS_ERROR_PRINT("Subscription failed.\n");
+    //     p_fims->Close();
+    //     return 1;
+    // }
+    // FPS_ERROR_PRINT("Number of subscriptions %d.\n", num);
+    // for (int is = 0 ; is < num ; is++)
+    // {
+    //     FPS_ERROR_PRINT(" subscriptions %d is [%s]\n", is, subs[is]);
+    // }
+
+    // free((void *)bpubs);
+    // free((void *)subs);
+    // while(running && p_fims->Connected())
+    // {
+    //     // once a second
+    //     fims_message* msg = p_fims->Receive_Timeout(1000);
+    //     //sysCfg *sys = sys_cfg[0];
+    //     if(msg != NULL)
+    //     {
+    //         for (int ixs = 0 ; ixs < num_configs; ixs++ )
+    //         {
+    //             sysCfg *sys = sys_cfg[ixs];
+            
+    //             dbs_type dbs; // collect all the parsed vars here
+    //             // We can use a single dbs 
+    //             cJSON* cjb = parseBody(dbs, sys, msg, DNP3_MASTER);
+
+    //             if(dbs.size() > 0)
+    //             {
+    //                 int commands;
+    //                 int numCmds = 0;
+    //                 cJSON*cj = NULL;                
+    //                 if((msg->replyto != NULL) && (strcmp(msg->method,"pub") != 0))
+    //                     cj = cJSON_CreateObject();
+
+    //                 while (!dbs.empty())
+    //                 {
+    //                     std::pair<DbVar*,int>dbp = dbs.back();
+    //                     // only do this on sets or posts
+    //                     if ((strcmp(msg->method,"set") == 0) || (strcmp(msg->method,"post") == 0))
+    //                     {
+    //                         addVarToCommands(&commands, dbp);
+    //                         numCmds++;
+    //                     }
+    //                     if(cj) addVarToCj(cj, dbp);
+    //                     dbs.pop_back();
+    //                 }
+
+    //                 if(cj)
+    //                 {
+    //                     const char* reply = cJSON_PrintUnformatted(cj);
+    //                     cJSON_Delete(cj);
+    //                     cj = NULL;
+    //                     // TODO check that SET is the correct thing to do in MODBUS_CLIENT
+    //                     // probably OK since this is a reply
+    //                     if(msg->replyto)
+    //                         p_fims->Send("set", msg->replyto, NULL, reply);
+
+    //                     free((void* )reply);
+    //                 }
+    //                 if(numCmds > 0)
+    //                 {
+    //                     FPS_DEBUG_PRINT("      *****Running Direct Outputs \n");
+    //                     //sys->master->DirectOperate(std::move(commands), fpsCommandCallback::Get());
+    //                 }
+    //             }
+            
+    //             // TODO master has to be assigned per config
+    //             if (sys->scanreq > 0)
+    //             {
+    //                 switch (sys->scanreq)
+    //                 {
+    //                     case 1:
+    //                     {
+    //                         //sys->master->ScanClasses(ClassField(ClassField::CLASS_1));
+    //                         break;
+    //                     }
+    //                     case 2:
+    //                     {
+    //                         //sys->master->ScanClasses(ClassField(ClassField::CLASS_2));
+    //                         break;
+    //                     }
+    //                     case 3:
+    //                     {
+    //                         //sys->master->ScanClasses(ClassField(ClassField::CLASS_3));
+    //                         break;
+    //                     }
+    //                     default:
+    //                         break;
+    //                 }
+    //                 FPS_ERROR_PRINT("****** master scanreq %d serviced\n", sys->scanreq);
+    //                 sys->scanreq = 0;
+    //             }
+
+    //             if (cjb != NULL)
+    //             {
+    //                 cJSON_Delete(cjb);
+    //             }
+    //         }
+    //         p_fims->free_message(msg);
+    //     }
+    // }
+
+    // //cleanup:
+    // // if (manager){
+    // //     delete manager;
+    // //     //delete channel;
+    // // }
+    // if (p_fims) delete p_fims;
+    // // sys_cfg should clean itself up
  
-    //if(sys_cfg.eth_dev       != NULL) free(sys_cfg.eth_dev);
-    //if(sys_cfg.ip_address    != NULL) free(sys_cfg.ip_address);
-    //if(sys_cfg.name          != NULL) free(sys_cfg.name);
-    //if(sys_cfg.serial_device != NULL) free(sys_cfg.serial_device);
-    //if(sys_cfg.mb != NULL)             modbus_free(sys_cfg.mb);
-    // for(int fd = 0; fd < fd_max; fd++)
-    //     if(FD_ISSET(fd, &all_connections))
-    //         close(fd);
-    for (int ix = 0; ix < num_configs; ix++)
-    {
-        FPS_ERROR_PRINT("****** client cleanup sys %d start\n", ix);
+    // //if(sys_cfg.eth_dev       != NULL) free(sys_cfg.eth_dev);
+    // //if(sys_cfg.ip_address    != NULL) free(sys_cfg.ip_address);
+    // //if(sys_cfg.name          != NULL) free(sys_cfg.name);
+    // //if(sys_cfg.serial_device != NULL) free(sys_cfg.serial_device);
+    // //if(sys_cfg.mb != NULL)             modbus_free(sys_cfg.mb);
+    // // for(int fd = 0; fd < fd_max; fd++)
+    // //     if(FD_ISSET(fd, &all_connections))
+    // //         close(fd);
+    // for (int ix = 0; ix < num_configs; ix++)
+    // {
+    //     FPS_ERROR_PRINT("****** client cleanup sys %d start\n", ix);
 
-        sysCfg *sys = sys_cfg[ix];
-        //if (sys->master)  delete sys->master;
-        //if (sys->stackConfig)  delete sys->stackConfig;
-        delete sys;
-        FPS_ERROR_PRINT("****** client cleanup sys %d done\n", ix);
+    //     sysCfg *sys = sys_cfg[ix];
+    //     //if (sys->master)  delete sys->master;
+    //     //if (sys->stackConfig)  delete sys->stackConfig;
+    //     delete sys;
+    //     FPS_ERROR_PRINT("****** client cleanup sys %d done\n", ix);
 
-    }
+    // }
 
     return 0;
 }
