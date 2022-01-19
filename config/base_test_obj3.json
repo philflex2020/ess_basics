@@ -1,0 +1,24 @@
+{
+    "subs":"/components:/system",
+	"id": "faults",
+	"offset": 100,
+	"name": "BESS Container #1 Fault Flag",
+	"uri": "/assets/ess/ess_1",
+    "newdata1":{
+        "name":"mydata1",
+        "value":345
+    },
+    "data2":{
+        "name":"new_mydata2",
+        "value":12345,
+        "data2.1": {
+            "name":"mydata2.1",
+            "value":345
+        }
+    },
+    "array1":[
+        {"aitem1":1},
+        {"aitem2":2}
+
+    ]
+}

@@ -1,0 +1,6 @@
+{
+	"id": "faults",
+	"offset": 10,
+	"name": "BESS Container #1 Fault Flag",
+	"uri": "/assets/ess/ess_1"
+}
