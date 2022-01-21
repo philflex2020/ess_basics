@@ -55,28 +55,28 @@ LIBS += -lcrypto
 LIBS += -lsimdjson
 
 BLIST = build
-BLIST += $(OBJ_DIR)libdmap.so 
+#BLIST += $(OBJ_DIR)libdmap.so 
 BLIST += $(LIST)
 
 GCC_GT_4805 := $(shell expr `gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \> 40805)
      BLIST = okbuild
      BLIST += build 
-     BLIST += $(OBJ_DIR)libdmap.so 
+#     BLIST += $(OBJ_DIR)libdmap.so 
      BLIST += $(LIST)
 
 
 #all:	
 all:	$(BLIST)
 
-$(OBJ_DIR)libdmap.so:	$(OBJ_DIR)libdmap.o 
-	$(CXX) -shared -o $@ $^ $(INCLUDES) $(LIBS)
+#$(OBJ_DIR)libdmap.so:	$(OBJ_DIR)libdmap.o 
+#	$(CXX) -shared -o $@ $^ $(INCLUDES) $(LIBS)
 
-$(OBJ_DIR)libdmap.o:	$(PROJECT_ROOT)src/dnp3_utils.cpp $(PROJECT_ROOT)include/dnp3_utils.h
-	$(CXX) -c $(CPPFLAGS) -fpic -o $@ $< $(INCLUDES_BUILD)
+#$(OBJ_DIR)libdmap.o:	$(PROJECT_ROOT)src/dnp3_utils.cpp $(PROJECT_ROOT)include/dnp3_utils.h
+#	$(CXX) -c $(CPPFLAGS) -fpic -o $@ $< $(INCLUDES_BUILD)
 
 
 $(BUILD_DIR)ess_basics: $(OBJ_DIR)ess_basics.o 
-	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS) -ldmap
+	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS)
 
  
 $(OBJ_DIR)%.o: $(PROJECT_ROOT)src/%.cpp
@@ -96,9 +96,9 @@ clean:
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(BIN_DIR)dnp3_utils
+	rm -rf $(BIN_DIR)ess_basics
 
 .PHONY: install
 install:
-	cp $(BUILD_DIR)dnp3_utils $(BIN_DIR)
-	cp $(OBJ_DIR)*.so $(LIBS_DIR)
+	cp $(BUILD_DIR)ess_basics $(BIN_DIR)
+#	cp $(OBJ_DIR)*.so $(LIBS_DIR)
