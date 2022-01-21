@@ -81,13 +81,19 @@ dbSj(){
     valuedouble = 0;
     dbtype = DB_NONE;
     depth = 0;
+    update = false;
     };
 ~dbSj(){};
     std::string name;
+
+    // todo put this into a union
     std::string valuestring;
     double valuedouble;
     double valueint;
     bool valuebool;
+    //
+    bool update;
+
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
     const char* get_dtype()
     {
@@ -165,6 +171,7 @@ dbSj(){
     {
         dbSj*db=adddbSjType(name, DB_DOUBLE);
         db->valuedouble = value;
+        db->update = true;
         return db;        
     }
 
@@ -172,6 +179,7 @@ dbSj(){
     {
         dbSj*db=adddbSjType(name, DB_STRING);
         db->valuestring = value;
+        db->update = true;
         return db;        
     }
 
@@ -179,6 +187,7 @@ dbSj(){
     {
         dbSj*db=adddbSjType(name, DB_BOOL);
         db->valuebool = value;
+        db->update = true;
         return db;        
     }
 
@@ -267,7 +276,9 @@ void recursive_print_dbSj(int level, dbSj* db)
 
 
 }
-
+// keep track of depth
+// if depth == 1 and we have a value then update the "value" param
+// if the depth > 1 and the name = value then flag the base that the value has been updated
 dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value element )
 {
     //int eos = 0;
@@ -278,13 +289,15 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
         base = new dbSj;
         base->depth = depth;
         base->dbtype=dbSj::DB_BASE;
-        return recursive_load_json(base, depth+1, element);
+        base->parent = nullptr;
+        db =  recursive_load_json(base, depth+1, element);
+        return db;
     }
     else
     {
         switch (element.type()) {
           case simdjson::ondemand::json_type::object:
-            cout << "OBJECT--->"<< base->name<<"<--["<< base->get_dtype()<<"]"<<std::endl;
+            cout << "["<<base->depth<<"] OBJECT--->"<< base->name<<"<--["<< base->get_dtype()<<"]"<<std::endl;
             if(base->dbtype == dbSj::DB_NONE) 
                 base->dbtype = dbSj::DB_OBJ;
             //add_comma = false;
@@ -292,7 +305,15 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 skey = "";
                 find_end_of_string(skey, field.key().raw());
                 db = base->find_key(skey.c_str());  // creates a key if one is not found
+                if(!db->parent) db->parent  = base;
+                db->depth = depth;
                 recursive_load_json(db, depth+1, field.value());
+                if(db->update)
+                {
+                    cout << "["<<base->depth<<"] OBJECT--->"<< db->name<<"<--["<< db->get_dtype()<<"] UPDATED"<<std::endl;
+                    db->update = false;
+
+                }
                 //add_comma = true;
             }
             break;
@@ -315,6 +336,16 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 // assume it fits in a double
                 base->valuedouble = element.get_double();
                 base->dbtype=dbSj::DB_DOUBLE;
+                if(base->parent)
+                {
+                    if (base->name == "value")
+                    {
+                        std::cout << "updating value " << std::endl;
+                        if(base->parent)
+                            base->parent->update = true;
+                    }
+                }
+                //base->update = true;
             break;
             case simdjson::ondemand::json_type::string:
                 skey = "";
@@ -322,13 +353,40 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 find_end_of_string(skey, element.get_raw_json_string().raw());
                 base->valuestring = skey;
                 base->dbtype=dbSj::DB_STRING;
+                if(base->parent)
+                {
+                    if (base->name == "value")
+                    {
+                        std::cout << "updating value " << std::endl;
+                        if(base->parent)
+                            base->parent->update = true;
+                    }
+                }
             break;
             case simdjson::ondemand::json_type::boolean:
                 base->valuebool = element.get_bool();
                 base->dbtype=dbSj::DB_BOOL;
+                if(base->parent)
+                {
+                    if (base->name == "value")
+                    {
+                        std::cout << "updating value " << std::endl;
+                        if(base->parent)
+                            base->parent->update = true;
+                    }
+                }
             break;
             case simdjson::ondemand::json_type::null:
                 base->dbtype=dbSj::DB_NULL;
+                if(base->parent)
+                {
+                    if (base->name == "value")
+                    {
+                        std::cout << "updating value " << std::endl;
+                        if(base->parent)
+                            base->parent->update = true;
+                    }
+                }
             break;
         }
     }
