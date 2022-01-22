@@ -38,6 +38,7 @@
 #include <fims/libfims.h>
 
 #include <iostream>
+#include <sstream>
 #include "simdjson.h" // for json parsing
 
 
@@ -100,8 +101,15 @@ union {
     };
     //
     bool update;
-
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
+    dtype dbtype;
+    std::vector<dbSj*> dvec;
+    std::map<std::string,dbSj*> dmap;
+    //dbSj* child; 
+    dbSj* parent; 
+    //int depth;
+
+
     const char* get_dtype()
     {
         switch (dbtype) {
@@ -129,12 +137,6 @@ union {
         }
         return nullptr;
     }
-    dtype dbtype;
-    std::vector<dbSj*> dvec;
-    std::map<std::string,dbSj*> dmap;
-    //dbSj* child; 
-    dbSj* parent; 
-    //int depth;
 
     dbSj* find_key(const char*key)
     {
@@ -241,107 +243,90 @@ int find_end_of_string(std::string &skey, const char*sp)
     return csnap;
 }
 
-// case simdjson::ondemand::json_type::object:
-//     cout << "{";
-//     add_comma = false;
-//     for (auto field : element.get_object()) {
-//       if (add_comma) {
-//         cout << ",";
-//       }
-//       // key() returns the key as it appears in the raw
-//       // JSON document, if we want the unescaped key,
-//       // we should do field.unescaped_key().
-//       cout << "\"" << field.key() << "\": ";
-//       recursive_print_json(field.value());
-//       add_comma = true;
-//     }
-//     cout << "}\n";
-//     break;
-void r_print_dbSj(int level, dbSj* db)
+void r_print_dbSj(std::stringstream& out, int level, dbSj* db)
 {
+    //cout << "Running" << std::endl;
     bool add_comma= false;
-    //for (int i = 0 ; i < level; i++)cout <<"\t";
 
     if(db->dbtype == dbSj::DB_BASE)
     {
-        cout << "{";// <<std::endl;
+        out << "{";// <<std::endl;
         add_comma = false;
-        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
  
         int xx = db->dvec.size();
         for ( int i = 0; i < xx ; i++)
         {
             if (add_comma) {
-                cout << ",";//<< std::endl;
-                //for (int i = 0 ; i < level; i++){cout <<"\t";}
+                out << ",";//<< std::endl;
             }
-            r_print_dbSj(level+1, db->dvec[i]);
+            r_print_dbSj(out, level+1, db->dvec[i]);
             add_comma = true;
         }
-
-        cout << "}"<< std::endl;
-
+       out << "}"<< std::endl;
     }
     else if(db->dbtype == dbSj::DB_OBJ)
     {
-        if(!db->name.empty()){cout << "\"" << db->name<< "\" :";}
-        cout << "{";//<<std::endl;
+        if(!db->name.empty()){out << "\"" << db->name<< "\" :";}
+        out << "{";//<<std::endl;
         add_comma = false;
         for ( auto  xx : db->dvec)
         {
             if (add_comma) {
-                cout << ",";//<< std::endl;
-                //for (int i = 0 ; i < level; i++){cout <<"\t";}
+                out << ",";//<< std::endl;
             }
-
-            r_print_dbSj(level+1, xx);
+            r_print_dbSj(out, level+1, xx);
             add_comma = true;
         }
-        cout << "}";
+        out << "}";
     }
     else if(db->dbtype == dbSj::DB_ARRAY)
     {
-        if(!db->name.empty()) {cout << "\"" << db->name<< "\" :";} 
-        cout << "[";// <<std::endl; 
+        if(!db->name.empty()) {out << "\"" << db->name<< "\" :";} 
+        out << "[";// <<std::endl; 
         add_comma =  false;
         for ( auto xx : db->dvec)
         {
             if (add_comma) {
-                cout << ",";//<< std::endl;
-                //for (int i = 0 ; i < level; i++){cout <<"\t";}
+                out << ",";//<< std::endl;
             }
-            r_print_dbSj(1, xx);
-
+            r_print_dbSj(out, 1, xx);
             add_comma = true;
         }
-        cout << "]"; 
+        out << "]"; 
     }
     else if(db->dbtype == dbSj::DB_STRING)
     {
-        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
 
-        cout << "\""<<db->valuestring<<"\"" ;
+        out << "\""<<db->valuestring<<"\"" ;
     }
     else if(db->dbtype == dbSj::DB_BOOL)
     {
-        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
         auto val = db->valuebool?"true":"false";
-        cout << val;
+        out << val;
 
     }
     else if(db->dbtype == dbSj::DB_DOUBLE)
     {
-        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
 
-        cout <<db->valuedouble;
+        out <<db->valuedouble;
 
     }
     else
     {
-        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
 
-        cout << db->get_dtype();
+        out << db->get_dtype();
     }
+}
+
+void r_print_dbSj2(std::stringstream& out, int level, dbSj* db)
+{
+    cout << " running " <<__func__ << std::endl;
+    r_print_dbSj(out, level, db);
 }
 
 void recursive_print_dbSj(int level, dbSj* db)
@@ -397,7 +382,6 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     if(!base)
     {
         base = new dbSj;
-        //base->depth = depth;
         base->dbtype=dbSj::DB_BASE;
         base->parent = nullptr;
         db =  recursive_load_json(base, depth+1, element);
@@ -407,7 +391,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     {
         switch (element.type()) {
           case simdjson::ondemand::json_type::object:
-            cout << "["<<depth<<"] OBJECT---base name>"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
+            //cout << "["<<depth<<"] OBJECT---base name>"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
             if(base->dbtype == dbSj::DB_NONE) 
                 base->dbtype = dbSj::DB_OBJ;
             //add_comma = false;
@@ -442,14 +426,9 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     // We need the call to value() to get
                     // an ondemand::value type.
                     skey = "";
-                    //eos = 
-                    //find_end_of_string(skey, field.key().raw());
-                    //cout << "xxx  ARRAY -->" << "<-- value -->"<<field.value()<<"<--"<< std::endl;
                     db = new dbSj;
                     db->dbtype = dbSj::DB_OBJ;
                     base->dvec.push_back(db);
-                    //db = base;
-                    //->find_key(skey.c_str());  // creates a key if one is not found
                     recursive_load_json(db, depth+1,field.value());
                 }
             break;
@@ -511,7 +490,6 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             break;
         }
     }
-
     return base;
 }
 
@@ -720,7 +698,10 @@ int main(int argc, char *argv[])
         p_fims->Close();
         return 1;
     }
-    r_print_dbSj(0, base);
+
+    std::stringstream out;
+    r_print_dbSj(out, 0, base);
+    cout<<out.str()<<std::endl;
 
     while(running && p_fims->Connected())
     {
@@ -728,10 +709,31 @@ int main(int argc, char *argv[])
         fims_message* msg = p_fims->Receive_Timeout(1000);
         if(msg)
         {
-            FPS_ERROR_PRINT(" got a fims message type [%s]", msg->method);
-            FPS_ERROR_PRINT(" uri [%s]", msg->uri);
-            if(msg->body) FPS_ERROR_PRINT(" body [%s]", msg->body);
-            FPS_ERROR_PRINT("\n");
+            if (strcmp(msg->method,"get")== 0)
+            {
+                std::stringstream out;
+                auto dreps = base->find(msg->uri);
+                if(dreps)
+                {
+                    r_print_dbSj2(out, 0, dreps);
+                }
+                else
+                {
+                    out << " Error :: uri [" <<msg->uri<<"]  Not found";
+                }
+                if(msg->replyto)
+                {
+                    p_fims->Send("set",msg->replyto,nullptr, out.str().c_str());
+                }
+            }
+            else
+            {
+                FPS_ERROR_PRINT(" got a fims message type [%s]", msg->method);
+                FPS_ERROR_PRINT(" uri [%s]", msg->uri);
+                if(msg->body) FPS_ERROR_PRINT(" body [%s]", msg->body);
+                FPS_ERROR_PRINT("\n");
+
+            }
             p_fims->free_message(msg);
         }
     }

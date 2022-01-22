@@ -20,5 +20,9 @@
         {"aitem1":1, "aitem1.1":1.1},
         {"aitem2":2}
 
-    ]
+    ],
+    "/components/id": {
+        "value": 234,
+        "name":" some comp name"
+    }
 }
