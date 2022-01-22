@@ -234,6 +234,80 @@ int find_end_of_string(std::string &skey, const char*sp)
     return csnap;
 }
 
+void r_print_dbSj(int level, dbSj* db, bool comma = true)
+{
+    for (int i = 0 ; i < level; i++)cout <<"\t";
+
+    if(db->dbtype == dbSj::DB_BASE)
+    {
+        cout << "{" <<std::endl;
+        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+ 
+        int xx = db->dvec.size();
+        for ( int i = 0; i < xx ; i++)
+        {
+            r_print_dbSj(level+1, db->dvec[i], ((i+1)<xx) );
+        }
+
+        for (int i = 0 ; i < level; i++){cout <<"\t";}cout << "}"<< std::endl;
+
+    }
+    else if(db->dbtype == dbSj::DB_OBJ)
+    {
+        if(!db->name.empty()){cout << "\"" << db->name<< "\" :";} cout << "{"<<std::endl;
+        int xx = db->dvec.size();
+        for ( int i = 0; i < xx ; i++)
+        {
+            r_print_dbSj(level+1, db->dvec[i], ((i+1)<xx) );
+        }
+
+        for (int i = 0 ; i < level; i++)cout <<"\t";
+        cout << "}";if(comma){cout <<",";}cout<<std::endl;  
+    }
+    else if(db->dbtype == dbSj::DB_ARRAY)
+    {
+        //cout << "{";
+        if(!db->name.empty()) {cout << "\"" << db->name<< "\" :";} 
+        cout << "[" <<std::endl; 
+        int xx = db->dvec.size();
+        for ( int i = 0; i < xx ; i++)
+        {
+            for (int i = 0 ; i < level+1; i++)cout <<"\t";
+            cout << "{";
+            r_print_dbSj(0, db->dvec[i], false );
+            for (int i = 0 ; i < level+1; i++)cout <<"\t";
+            cout << "}";
+            if((i+1)<xx){cout <<",";} cout<<std::endl;
+        }
+        for (int i = 0 ; i < level; i++)cout <<"\t";
+        cout << "]" <<std::endl; 
+    }
+    else if(db->dbtype == dbSj::DB_STRING)
+    {
+        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+
+        cout << "\""<<db->valuestring<<"\"" ;
+
+        if(comma){cout <<",";} cout <<std::endl; 
+    }
+    else if(db->dbtype == dbSj::DB_DOUBLE)
+    {
+        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+
+        cout <<db->valuedouble;
+
+        if(comma){cout <<",";} cout <<std::endl; 
+    }
+    else
+    {
+        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+
+        cout << db->get_dtype();
+
+        if(comma){cout <<",";} cout <<std::endl; 
+    }
+}
+
 void recursive_print_dbSj(int level, dbSj* db)
 {
     if(db->dbtype == dbSj::DB_BASE)
@@ -326,7 +400,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     skey = "";
                     //eos = 
                     //find_end_of_string(skey, field.key().raw());
-                    //cout << "ARRAY -->" << "<-- value -->"<<field.value()<<"<--"<< std::endl;
+                    //cout << "xxx  ARRAY -->" << "<-- value -->"<<field.value()<<"<--"<< std::endl;
                     db = base;
                     //->find_key(skey.c_str());  // creates a key if one is not found
                     recursive_load_json(db, depth+1,field.value());
@@ -565,6 +639,8 @@ int main(int argc, char *argv[])
         p_fims->Close();
         return 1;
     }
+    r_print_dbSj(0, base);
+
     while(running && p_fims->Connected())
     {
         // once a second
