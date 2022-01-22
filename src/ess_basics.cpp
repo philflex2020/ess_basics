@@ -68,29 +68,36 @@ void signal_handler (int sig)
 
 class dbSj;
 
+static std::map<dbSj*,dbSj*> dbSjMap;
 // attempt to load  an updateable  dbs stricture directly from simdjson
+
 class dbSj {
 public:
 dbSj(){
-    child = nullptr;
+    //child = nullptr;
     parent = nullptr;
     name = "";
     valuestring =  "";
-    valuebool = false;
-    valueint = 0;
-    valuedouble = 0;
+    //valuebool = false;
+    //valueint = 0;
+    //valuestring = "";
     dbtype = DB_NONE;
-    depth = 0;
+    //depth = 0;
     update = false;
+    dbSjMap[this] = this;
     };
+
 ~dbSj(){};
+
     std::string name;
 
     // todo put this into a union
     std::string valuestring;
+union {
     double valuedouble;
     double valueint;
     bool valuebool;
+    };
     //
     bool update;
 
@@ -125,9 +132,9 @@ dbSj(){
     dtype dbtype;
     std::vector<dbSj*> dvec;
     std::map<std::string,dbSj*> dmap;
-    dbSj* child; 
+    //dbSj* child; 
     dbSj* parent; 
-    int depth;
+    //int depth;
 
     dbSj* find_key(const char*key)
     {
@@ -253,11 +260,11 @@ int find_end_of_string(std::string &skey, const char*sp)
 void r_print_dbSj(int level, dbSj* db)
 {
     bool add_comma= false;
-    for (int i = 0 ; i < level; i++)cout <<"\t";
+    //for (int i = 0 ; i < level; i++)cout <<"\t";
 
     if(db->dbtype == dbSj::DB_BASE)
     {
-        cout << "{" <<std::endl;
+        cout << "{";// <<std::endl;
         add_comma = false;
         if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
  
@@ -265,25 +272,26 @@ void r_print_dbSj(int level, dbSj* db)
         for ( int i = 0; i < xx ; i++)
         {
             if (add_comma) {
-                cout << ","<< std::endl;
+                cout << ",";//<< std::endl;
+                //for (int i = 0 ; i < level; i++){cout <<"\t";}
             }
             r_print_dbSj(level+1, db->dvec[i]);
             add_comma = true;
         }
 
-        for (int i = 0 ; i < level; i++){cout <<"\t";}
         cout << "}"<< std::endl;
 
     }
     else if(db->dbtype == dbSj::DB_OBJ)
     {
         if(!db->name.empty()){cout << "\"" << db->name<< "\" :";}
-        cout << "{"<<std::endl;
+        cout << "{";//<<std::endl;
         add_comma = false;
         for ( auto  xx : db->dvec)
         {
             if (add_comma) {
-                cout << ","<< std::endl;
+                cout << ",";//<< std::endl;
+                //for (int i = 0 ; i < level; i++){cout <<"\t";}
             }
 
             r_print_dbSj(level+1, xx);
@@ -294,14 +302,14 @@ void r_print_dbSj(int level, dbSj* db)
     else if(db->dbtype == dbSj::DB_ARRAY)
     {
         if(!db->name.empty()) {cout << "\"" << db->name<< "\" :";} 
-        cout << "[" <<std::endl; 
+        cout << "[";// <<std::endl; 
         add_comma =  false;
         for ( auto xx : db->dvec)
         {
             if (add_comma) {
-                cout << ","<< std::endl;
+                cout << ",";//<< std::endl;
+                //for (int i = 0 ; i < level; i++){cout <<"\t";}
             }
-            for (int i = 0 ; i < level; i++)cout <<"\t";
             r_print_dbSj(1, xx);
 
             add_comma = true;
@@ -389,7 +397,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     if(!base)
     {
         base = new dbSj;
-        base->depth = depth;
+        //base->depth = depth;
         base->dbtype=dbSj::DB_BASE;
         base->parent = nullptr;
         db =  recursive_load_json(base, depth+1, element);
@@ -399,7 +407,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     {
         switch (element.type()) {
           case simdjson::ondemand::json_type::object:
-            cout << "["<<base->depth<<"] OBJECT---base name>"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
+            cout << "["<<depth<<"] OBJECT---base name>"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
             if(base->dbtype == dbSj::DB_NONE) 
                 base->dbtype = dbSj::DB_OBJ;
             //add_comma = false;
@@ -410,7 +418,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 {
                     db = base->find_key(skey.c_str());  // creates a key if one is not found
                     if(!db->parent) db->parent  = base;
-                    db->depth = depth;
+                    //db->depth = depth;
                 }
                 else
                 {
@@ -420,7 +428,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 recursive_load_json(db, depth+1, field.value());
                 if(db->update)
                 {
-                    cout << "["<<base->depth<<"] OBJECT--->"<< db->name<<"<--["<< db->get_dtype()<<"] UPDATED"<<std::endl;
+                    cout << "["<<depth<<"] OBJECT--->"<< db->name<<"<--["<< db->get_dtype()<<"] UPDATED"<<std::endl;
                     db->update = false;
 
                 }
@@ -663,6 +671,8 @@ char** getSubs(int &idx, char* in)
 
 int main(int argc, char *argv[])
 {
+    //dbSj* base2 = new dbSj;
+    //if(base2)return 0;
 
     fims* p_fims;
     p_fims = new fims();
