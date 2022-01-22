@@ -234,61 +234,94 @@ int find_end_of_string(std::string &skey, const char*sp)
     return csnap;
 }
 
-void r_print_dbSj(int level, dbSj* db, bool comma = true)
+// case simdjson::ondemand::json_type::object:
+//     cout << "{";
+//     add_comma = false;
+//     for (auto field : element.get_object()) {
+//       if (add_comma) {
+//         cout << ",";
+//       }
+//       // key() returns the key as it appears in the raw
+//       // JSON document, if we want the unescaped key,
+//       // we should do field.unescaped_key().
+//       cout << "\"" << field.key() << "\": ";
+//       recursive_print_json(field.value());
+//       add_comma = true;
+//     }
+//     cout << "}\n";
+//     break;
+void r_print_dbSj(int level, dbSj* db)
 {
+    bool add_comma= false;
     for (int i = 0 ; i < level; i++)cout <<"\t";
 
     if(db->dbtype == dbSj::DB_BASE)
     {
         cout << "{" <<std::endl;
+        add_comma = false;
         if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
  
         int xx = db->dvec.size();
         for ( int i = 0; i < xx ; i++)
         {
-            r_print_dbSj(level+1, db->dvec[i], ((i+1)<xx) );
+            if (add_comma) {
+                cout << ","<< std::endl;
+            }
+            r_print_dbSj(level+1, db->dvec[i]);
+            add_comma = true;
         }
 
-        for (int i = 0 ; i < level; i++){cout <<"\t";}cout << "}"<< std::endl;
+        for (int i = 0 ; i < level; i++){cout <<"\t";}
+        cout << "}"<< std::endl;
 
     }
     else if(db->dbtype == dbSj::DB_OBJ)
     {
-        if(!db->name.empty()){cout << "\"" << db->name<< "\" :";} cout << "{"<<std::endl;
-        int xx = db->dvec.size();
-        for ( int i = 0; i < xx ; i++)
+        if(!db->name.empty()){cout << "\"" << db->name<< "\" :";}
+        cout << "{"<<std::endl;
+        add_comma = false;
+        for ( auto  xx : db->dvec)
         {
-            r_print_dbSj(level+1, db->dvec[i], ((i+1)<xx) );
-        }
+            if (add_comma) {
+                cout << ","<< std::endl;
+            }
 
-        for (int i = 0 ; i < level; i++)cout <<"\t";
-        cout << "}";if(comma){cout <<",";}cout<<std::endl;  
+            r_print_dbSj(level+1, xx);
+            add_comma = true;
+        }
+        cout << "}";
     }
     else if(db->dbtype == dbSj::DB_ARRAY)
     {
-        //cout << "{";
         if(!db->name.empty()) {cout << "\"" << db->name<< "\" :";} 
         cout << "[" <<std::endl; 
-        int xx = db->dvec.size();
-        for ( int i = 0; i < xx ; i++)
+        add_comma =  false;
+        for ( auto xx : db->dvec)
         {
+            if (add_comma) {
+                cout << ","<< std::endl;
+            }
             for (int i = 0 ; i < level+1; i++)cout <<"\t";
-            cout << "{";
-            r_print_dbSj(0, db->dvec[i], false );
-            for (int i = 0 ; i < level+1; i++)cout <<"\t";
-            cout << "}";
-            if((i+1)<xx){cout <<",";} cout<<std::endl;
+            cout <<"{";
+            r_print_dbSj(0, xx);
+            cout <<"}";
+
+            add_comma = true;
         }
-        for (int i = 0 ; i < level; i++)cout <<"\t";
-        cout << "]" <<std::endl; 
+        cout << "]"; 
     }
     else if(db->dbtype == dbSj::DB_STRING)
     {
         if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
 
         cout << "\""<<db->valuestring<<"\"" ;
+    }
+    else if(db->dbtype == dbSj::DB_BOOL)
+    {
+        if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
+        auto val = db->valuebool?"true":"false";
+        cout << val;
 
-        if(comma){cout <<",";} cout <<std::endl; 
     }
     else if(db->dbtype == dbSj::DB_DOUBLE)
     {
@@ -296,15 +329,12 @@ void r_print_dbSj(int level, dbSj* db, bool comma = true)
 
         cout <<db->valuedouble;
 
-        if(comma){cout <<",";} cout <<std::endl; 
     }
     else
     {
         if(!db->name.empty())cout << "\"" << db->name<< "\" :"; 
 
         cout << db->get_dtype();
-
-        if(comma){cout <<",";} cout <<std::endl; 
     }
 }
 
@@ -378,9 +408,17 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             for (auto field : element.get_object()) {
                 skey = "";
                 find_end_of_string(skey, field.key().raw());
-                db = base->find_key(skey.c_str());  // creates a key if one is not found
-                if(!db->parent) db->parent  = base;
-                db->depth = depth;
+                if(!skey.empty())
+                {
+                    db = base->find_key(skey.c_str());  // creates a key if one is not found
+                    if(!db->parent) db->parent  = base;
+                    db->depth = depth;
+                }
+                else
+                {
+                    db=base;
+                }
+
                 recursive_load_json(db, depth+1, field.value());
                 if(db->update)
                 {
@@ -542,8 +580,11 @@ dbSj* parse_input(dbSj*base, const simdjson::simdjson_result<simdjson::padded_st
     return base;
 }
 
-dbSj* parse_input(dbSj*base, const char* fname)
+dbSj*  parse_input(dbSj* base, const char* fname )
 {
+    simdjson::ondemand::parser parser;
+    simdjson::ondemand::document doc;
+
     const simdjson::simdjson_result<simdjson::padded_string> json = simdjson::padded_string::load(fname);
     auto err = json.error();
     if (err)
@@ -552,6 +593,34 @@ dbSj* parse_input(dbSj*base, const char* fname)
         return nullptr;
     }
     return parse_input(base, json, fname);
+}
+
+void parse_print_input(const simdjson::simdjson_result<simdjson::padded_string> &json, const char* fname )
+{
+    simdjson::ondemand::parser parser;
+    simdjson::ondemand::document doc;
+
+
+    //const simdjson::simdjson_result<simdjson::padded_string> json = simdjson::padded_string::load(fname);
+    //const auto json = simdjson::padded_string::load(fname);
+
+    doc = parser.iterate(json); 
+
+    simdjson::ondemand::value val = doc;
+
+    recursive_print_json(val);
+}
+
+void parse_print_input(const char* fname)
+{
+    const simdjson::simdjson_result<simdjson::padded_string> json = simdjson::padded_string::load(fname);
+    auto err = json.error();
+    if (err)
+    {
+        FPS_ERROR_PRINT("Can't open json file %s, err = ??. Please check your config path\n", fname);//, simdjson::error_message(err));
+        return;
+    }
+    parse_print_input(json, fname);
 }
 
 // split up the string /a:/b: into the subs** that we need
@@ -606,6 +675,7 @@ int main(int argc, char *argv[])
 
     base = parse_input(base, argv[1]);
     base = parse_input(base, argv[2]);
+    //parse_print_input(argv[2]);
     auto dsubs = base->find("subs");
     char** ssubs = nullptr;
     int idx = 0;
