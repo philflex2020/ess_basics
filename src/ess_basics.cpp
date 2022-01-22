@@ -301,10 +301,8 @@ void r_print_dbSj(int level, dbSj* db)
             if (add_comma) {
                 cout << ","<< std::endl;
             }
-            for (int i = 0 ; i < level+1; i++)cout <<"\t";
-            cout <<"{";
-            r_print_dbSj(0, xx);
-            cout <<"}";
+            for (int i = 0 ; i < level; i++)cout <<"\t";
+            r_print_dbSj(1, xx);
 
             add_comma = true;
         }
@@ -401,7 +399,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     {
         switch (element.type()) {
           case simdjson::ondemand::json_type::object:
-            cout << "["<<base->depth<<"] OBJECT--->"<< base->name<<"<--["<< base->get_dtype()<<"]"<<std::endl;
+            cout << "["<<base->depth<<"] OBJECT---base name>"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
             if(base->dbtype == dbSj::DB_NONE) 
                 base->dbtype = dbSj::DB_OBJ;
             //add_comma = false;
@@ -431,7 +429,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             break;
             case simdjson::ondemand::json_type::array:
                 base->dbtype = dbSj::DB_ARRAY;
-                cout << "ARRAY--->"<< base->name<<"<-- ["<< base->get_dtype()<<"]"<<std::endl;
+                cout << "["<<depth<<"] ARRAY---base name >"<< base->name<<"<-- base type ["<< base->get_dtype()<<"]"<<std::endl;
                 for (auto field : element.get_array()) {
                     // We need the call to value() to get
                     // an ondemand::value type.
@@ -439,7 +437,10 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     //eos = 
                     //find_end_of_string(skey, field.key().raw());
                     //cout << "xxx  ARRAY -->" << "<-- value -->"<<field.value()<<"<--"<< std::endl;
-                    db = base;
+                    db = new dbSj;
+                    db->dbtype = dbSj::DB_OBJ;
+                    base->dvec.push_back(db);
+                    //db = base;
                     //->find_key(skey.c_str());  // creates a key if one is not found
                     recursive_load_json(db, depth+1,field.value());
                 }
