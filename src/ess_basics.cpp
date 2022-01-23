@@ -548,6 +548,12 @@ void recursive_print_json(simdjson::ondemand::value element) {
 //std::fread(s.data(), 1, len, fp);
 //simdjson_result<padded_string>
 
+// dbSj* parse_input(dbSj*base, const char *json, const char* fname )
+// {
+//    const size_t json_len = std::strlen(json);
+//    simdjson::ondemand::parser parser;
+//    *   simdjson::dom::element element = parser.parse(json, json_len);
+
 dbSj* parse_input(dbSj*base, const simdjson::simdjson_result<simdjson::padded_string> &json, const char* fname )
 {
     simdjson::ondemand::parser parser;
@@ -580,6 +586,28 @@ dbSj*  parse_input(dbSj* base, const char* fname )
         return nullptr;
     }
     return parse_input(base, json, fname);
+}
+
+//https://raw.githubusercontent.com/simdjson/simdjson/master/singleheader/simdjson.h
+
+dbSj*  parse_input_str(dbSj* base, const char* data , const char * uri)
+{
+    simdjson::ondemand::parser parser;
+    simdjson::ondemand::document doc;
+     const size_t data_len = std::strlen(data);
+
+
+    const simdjson::simdjson_result<simdjson::padded_string> json = simdjson::padded_string(data, data_len);
+    //const auto json = simdjson::padded_string::load(fname);
+
+    doc = parser.iterate(json); 
+
+    simdjson::ondemand::value val = doc;
+
+    base = recursive_load_json(base, 0, val);
+    cout<< " after input_str >" << uri << "<"<< std::endl; 
+    recursive_print_dbSj(0, base);
+    return base;
 }
 
 void parse_print_input(const simdjson::simdjson_result<simdjson::padded_string> &json, const char* fname )
@@ -709,7 +737,34 @@ int main(int argc, char *argv[])
         fims_message* msg = p_fims->Receive_Timeout(1000);
         if(msg)
         {
-            if (strcmp(msg->method,"get")== 0)
+            bool runrep = true;
+            if ((strcmp(msg->method,"set")== 0) || (strcmp(msg->method,"pub")== 0))
+            {
+                if(msg->body)
+                {
+                    if (strcmp(msg->method,"pub")== 0)
+                    {
+                        runrep=false;
+                    }
+
+                    auto dreps = base->find(msg->uri);
+                    if(!dreps)
+                    {
+                        cout << " Adding uri -->" << msg->uri << "<--" << std::endl;
+                        dreps =  base->adddbSj(msg->uri);
+                    }
+                    else
+                    {
+                        cout << " found uri -->" << msg->uri << "<--" << std::endl;
+                    }
+                    parse_input_str(dreps, msg->body, msg->uri);
+                    if(msg->replyto&& runrep)
+                    {
+                        p_fims->Send("set",msg->replyto,nullptr, msg->body);
+                    }
+                }
+            }
+            else if (strcmp(msg->method,"get")== 0)
             {
                 std::stringstream out;
                 auto dreps = base->find(msg->uri);
@@ -719,7 +774,8 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    out << " Error :: uri [" <<msg->uri<<"]  Not found";
+                    r_print_dbSj2(out, 0, base);
+                    //out << " Error :: uri [" <<msg->uri<<"]  Not found";
                 }
                 if(msg->replyto)
                 {
