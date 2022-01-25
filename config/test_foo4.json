@@ -1,0 +1,15 @@
+{
+ "/components/foo4" :
+             {"trip_status" :{
+                       "value" :22,
+                       "actions" :{
+                                    "onset" :[{
+                                         "remap" :[
+                                                   {"remap1" :1},
+                                                   {"remap2" :3}
+                                                 ]
+                                             }]
+                                  }
+                              }
+             }
+}

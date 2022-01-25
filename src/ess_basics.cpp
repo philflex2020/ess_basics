@@ -72,33 +72,72 @@ class dbSj;
 static std::map<dbSj*,dbSj*> dbSjMap;
 // attempt to load  an updateable  dbs stricture directly from simdjson
 
-class dbSj {
+
+class dbVal {
+
 public:
-dbSj(){
-    //child = nullptr;
-    parent = nullptr;
-    name = "";
-    valuestring =  "";
-    //valuebool = false;
-    //valueint = 0;
-    //valuestring = "";
-    dbtype = DB_NONE;
-    //depth = 0;
-    update = false;
-    dbSjMap[this] = this;
-    };
+    dbVal(){};
+    ~dbVal(){};
+    enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
+    dtype dbtype;
 
-~dbSj(){};
-
-    std::string name;
-
-    // todo put this into a union
     std::string valuestring;
 union {
     double valuedouble;
     double valueint;
     bool valuebool;
     };
+};
+
+class dbSj {
+public:
+dbSj(){
+    //child = nullptr;
+    parent = nullptr;
+    name = "";
+    //valuebool = false;
+    //valueint = 0;
+    //valuestring = "";
+    dbtype = DB_NONE;
+    dbval = new dbVal;
+    dbval->valuestring =  "";
+    depth = 0;
+    update = false;
+    dbSjMap[this] = this;
+    };
+
+dbSj(int depth, dbSj * p){
+    //child = nullptr;
+    parent = p;
+    name = "";
+    //valuebool = false;
+    //valueint = 0;
+    //valuestring = "";
+    dbtype = DB_NONE;
+    dbval = new dbVal;
+    dbval->valuestring =  "";
+   
+    depth = depth+1;
+    update = false;
+    dbSjMap[this] = this;
+    };
+
+
+~dbSj(){
+    cout << " deleteing ["<<name<<"]"<< std::endl;
+    //if(dbval)
+    //    delete dbval;
+};
+
+    std::string name;
+
+    // todo put this into a union
+//     std::string valuestring;
+// union {
+//     double valuedouble;
+//     double valueint;
+//     bool valuebool;
+//     };
     //
     bool update;
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
@@ -106,8 +145,9 @@ union {
     std::vector<dbSj*> dvec;
     std::map<std::string,dbSj*> dmap;
     //dbSj* child; 
-    dbSj* parent; 
-    //int depth;
+    dbSj* parent;
+    dbVal* dbval;
+    int depth;  // depth of 2 has a value (in a param)
 
 
     const char* get_dtype()
@@ -133,7 +173,6 @@ union {
                 return "null";
             case DB_END:
                 return "end";
-
         }
         return nullptr;
     }
@@ -159,7 +198,8 @@ union {
         dbSj*db = nullptr;
         if(dmap.find(name) == dmap.end())
         {
-            db = new dbSj();
+            db = new dbSj(depth, this);
+            db->depth = depth+1;
             dmap[name] = db;
             db->name = name;
             db->parent = this;
@@ -179,7 +219,7 @@ union {
     dbSj* adddbSj(const char* name, double value)
     {
         dbSj*db=adddbSjType(name, DB_DOUBLE);
-        db->valuedouble = value;
+        db->dbval->valuedouble = value;
         db->update = true;
         return db;        
     }
@@ -187,7 +227,7 @@ union {
     dbSj* adddbSj(const char* name, const char* value)
     {
         dbSj*db=adddbSjType(name, DB_STRING);
-        db->valuestring = value;
+        db->dbval->valuestring = value;
         db->update = true;
         return db;        
     }
@@ -195,7 +235,7 @@ union {
     dbSj* adddbSj(const char* name, bool value)
     {
         dbSj*db=adddbSjType(name, DB_BOOL);
-        db->valuebool = value;
+        db->dbval->valuebool = value;
         db->update = true;
         return db;        
     }
@@ -203,6 +243,18 @@ union {
 
 } dbSj_t;
 
+void doExit()
+{
+    cout << "on exit map size :" << dbSjMap.size()<< std::endl;
+    for (auto xx : dbSjMap)
+    {
+        dbSj *db = xx.second;
+        if(db)
+        {
+            cout << " name ["<< db->name<<"] depth :" << db->depth << std::endl; 
+        }
+    }
+}
 // assume simple strings terminated by \"  followed by space or ":"
 int find_end_of_string(std::string &skey, const char*sp)
 {
@@ -299,12 +351,12 @@ void r_print_dbSj(std::stringstream& out, int level, dbSj* db)
     {
         if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
 
-        out << "\""<<db->valuestring<<"\"" ;
+        out << "\""<<db->dbval->valuestring<<"\"" ;
     }
     else if(db->dbtype == dbSj::DB_BOOL)
     {
         if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
-        auto val = db->valuebool?"true":"false";
+        auto val = db->dbval->valuebool?"true":"false";
         out << val;
 
     }
@@ -312,7 +364,7 @@ void r_print_dbSj(std::stringstream& out, int level, dbSj* db)
     {
         if(!db->name.empty())out << "\"" << db->name<< "\" :"; 
 
-        out <<db->valuedouble;
+        out <<db->dbval->valuedouble;
 
     }
     else
@@ -357,12 +409,12 @@ void recursive_print_dbSj(int level, dbSj* db)
     }
     else if(db->dbtype == dbSj::DB_STRING)
     {
-        cout << "[" << level <<"] type ["<< db->get_dtype()<<"] name -->  ["<< db->name<< "] value [" <<db->valuestring<<"]" <<std::endl; 
+        cout << "[" << level <<"] type ["<< db->get_dtype()<<"] name -->  ["<< db->name<< "] value [" <<db->dbval->valuestring<<"]" <<std::endl; 
 
     }
     else if(db->dbtype == dbSj::DB_DOUBLE)
     {
-        cout << "[" << level <<"] type ["<< db->get_dtype()<<"] name -->  ["<< db->name<< "] value [" <<db->valuedouble<<"]" <<std::endl; 
+        cout << "[" << level <<"] type ["<< db->get_dtype()<<"] name -->  ["<< db->name<< "] value [" <<db->dbval->valuedouble<<"]" <<std::endl; 
     }
     else
     {
@@ -381,8 +433,9 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
     std::string skey = "";
     if(!base)
     {
-        base = new dbSj;
+        base = new dbSj;        
         base->dbtype=dbSj::DB_BASE;
+        //base->name = "__base";
         base->parent = nullptr;
         db =  recursive_load_json(base, depth+1, element);
         return db;
@@ -434,7 +487,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             break;
             case simdjson::ondemand::json_type::number:
                 // assume it fits in a double
-                base->valuedouble = element.get_double();
+                base->dbval->valuedouble = element.get_double();
                 base->dbtype=dbSj::DB_DOUBLE;
                 if(base->parent)
                 {
@@ -451,7 +504,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 skey = "";
                 //eos = 
                 find_end_of_string(skey, element.get_raw_json_string().raw());
-                base->valuestring = skey;
+                base->dbval->valuestring = skey;
                 base->dbtype=dbSj::DB_STRING;
                 if(base->parent)
                 {
@@ -464,7 +517,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 }
             break;
             case simdjson::ondemand::json_type::boolean:
-                base->valuebool = element.get_bool();
+                base->dbval->valuebool = element.get_bool();
                 base->dbtype=dbSj::DB_BOOL;
                 if(base->parent)
                 {
@@ -699,9 +752,9 @@ int main(int argc, char *argv[])
 
     if(dsubs)
     {
-        cout << " Found subs [" << dsubs->valuestring <<"]";
+        cout << " Found subs [" << dsubs->dbval->valuestring <<"]";
         ssubs = 
-        getSubs(idx, (char*)dsubs->valuestring.c_str());
+        getSubs(idx, (char*)dsubs->dbval->valuestring.c_str());
         cout << " idx  [" << idx <<"]"<< std::endl;
     }
     FPS_ERROR_PRINT("Number of subscriptions %d.\n", idx);
@@ -767,6 +820,7 @@ int main(int argc, char *argv[])
             else if (strcmp(msg->method,"get")== 0)
             {
                 std::stringstream out;
+                out << "{";
                 auto dreps = base->find(msg->uri);
                 if(dreps)
                 {
@@ -777,8 +831,11 @@ int main(int argc, char *argv[])
                     r_print_dbSj2(out, 0, base);
                     //out << " Error :: uri [" <<msg->uri<<"]  Not found";
                 }
+                
+                out << "}";
                 if(msg->replyto)
                 {
+
                     p_fims->Send("set",msg->replyto,nullptr, out.str().c_str());
                 }
             }
@@ -795,6 +852,7 @@ int main(int argc, char *argv[])
     }
     FPS_ERROR_PRINT(" System completed OK\n");
     if(p_fims)p_fims->Close();
+    doExit();
     return 0;
     
 
