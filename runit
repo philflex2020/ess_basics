@@ -1,1 +1,1 @@
-build/release/ess_basics config/config/base_test_obj2.json config/base_test_obj3.json
+build/release/ess_basics config/base_test_obj2.json config/base_test_obj3.json

@@ -65,14 +65,39 @@ void signal_handler (int sig)
     signal(sig, SIG_DFL);
 }
 
-
+int split_delim(std::vector<std::string>&v, const std::string& s, char c) 
+{
+    auto end = s.cend();
+    auto start = end;
+    int idx = 0;
+    for( auto it = s.cbegin(); it != end; ++it ) {
+        if( *it != c ) {
+            if( start == end )
+                start = it;
+            continue;
+        }
+        if( start != end ) {
+            idx++;
+            v.emplace_back(start, it);
+            start = end;
+        }
+    }
+    if( start != end )
+    {
+        idx++;
+        v.emplace_back(start, end);
+    }
+    return idx;
+}
 
 class dbSj;
 
 static std::map<dbSj*,dbSj*> dbSjMap;
 // attempt to load  an updateable  dbs stricture directly from simdjson
 
-
+// todo 
+//    track owners only delete when owners are all gone
+//    add set/get val with locks
 class dbVal {
 
 public:
@@ -80,7 +105,7 @@ public:
     ~dbVal(){};
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
     dtype dbtype;
-
+    std::vector<void*> ownvec;
     std::string valuestring;
 union {
     double valuedouble;
@@ -102,6 +127,8 @@ dbSj(){
     dbval = new dbVal;
     dbval->valuestring =  "";
     depth = 0;
+    state = 0;
+    item = 0;
     update = false;
     dbSjMap[this] = this;
     };
@@ -130,25 +157,108 @@ dbSj(int depth, dbSj * p){
 };
 
     std::string name;
-
-    // todo put this into a union
-//     std::string valuestring;
-// union {
-//     double valuedouble;
-//     double valueint;
-//     bool valuebool;
-//     };
+    // todo try one of these
+    std::vector<std::vector<dbVal*>> svalpvec;
+    std::vector<std::vector<dbVal>> svalvec;
     //
     bool update;
+    // todo move this out to dbVal
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
     dtype dbtype;
+
+    // thse are the kids
     std::vector<dbSj*> dvec;
     std::map<std::string,dbSj*> dmap;
+
     //dbSj* child; 
     dbSj* parent;
     dbVal* dbval;
-    int depth;  // depth of 2 has a value (in a param)
 
+    int depth;  // depth of 2 has a value (in a param)
+    
+    int state;
+    int item;
+    //go all the way back 
+    // /components/sel_735:value:depth
+    // /components/sel_735:value:state
+    // /components/sel_735:value:item
+    // setsVal (T value)
+    // svalvec[state][item].valuedouble = 234.5
+
+    void setsVal(double val)
+    {
+        svalvec[state][item].valuedouble = val;
+    }
+
+    double getsdVal()
+    { 
+        return svalvec[state][item].valuedouble;
+    }
+
+    dbSj*getVar(dbSj* basedb, const char* uri)
+    {
+        dbSj*db = nullptr;
+        dbSj*dbi = basedb;
+        std::vector<std::string>v;
+        split_delim(v,uri,':');
+        for (auto xx : v)
+        {
+            if(dbi->dmap.find(xx)== dbi->dmap.end())
+                return nullptr;
+            dbi=dbi->dmap[xx];
+            db = dbi;
+        }
+        return db;
+    }
+
+    dbSj*setVal(dbSj* basedb, const char* uri, double value)
+    {
+        //dbSj*db = nullptr;
+        dbSj*dbi = basedb;
+        std::vector<std::string>v;
+        split_delim(v,uri,':');
+        for (auto xx : v)
+        {
+            if(dbi->dmap.find(xx)== dbi->dmap.end())
+            {
+                //adddbSj(key);   
+                dbi->adddbSj(xx.c_str());
+                dbi=dbi->dmap[xx];
+                dbi->dbtype=DB_OBJ;
+            }
+            else
+            {
+                dbi=dbi->dmap[xx];
+            }
+        }
+        //dbi->setsVal(value);
+        dbi->dbval->valuedouble=value;
+        dbi->dbtype=DB_DOUBLE;
+        return dbi;
+    }
+
+    void getroot()
+    {
+        dbSj* rootdb=this;
+        std::vector<const char *>rvec;
+        while (rootdb->parent)
+        {
+            if(rootdb->parent->name.size() > 0)
+                rvec.push_back(rootdb->parent->name.c_str());
+            rootdb=rootdb->parent;
+            /* code */
+        }
+        std::string sroot;
+        int idx = 0;
+        for ( auto xx: rvec)
+        {
+            if(idx++ >0)
+                sroot.insert(0,":");
+            sroot.insert(0,xx);
+        }
+        root = sroot;
+    }
+    std::string root;
 
     const char* get_dtype()
     {
@@ -251,7 +361,8 @@ void doExit()
         dbSj *db = xx.second;
         if(db)
         {
-            cout << " name ["<< db->name<<"] depth :" << db->depth << std::endl; 
+            db->getroot();
+            cout << " root ["<<db->root<<"] name ["<< db->name<<"] depth :" << db->depth << std::endl; 
         }
     }
 }
@@ -779,6 +890,7 @@ int main(int argc, char *argv[])
         p_fims->Close();
         return 1;
     }
+    base->setVal(base,"/components/base:test:val:data",1234.2);
 
     std::stringstream out;
     r_print_dbSj(out, 0, base);
