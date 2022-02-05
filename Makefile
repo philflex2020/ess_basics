@@ -15,6 +15,8 @@ $(info MAKEFILE_LIST="$(MAKEFILE_LIST)")
 
  
 BINS = ess_basics
+TEST_BINS = test_assetUri
+
 BIN_DIR = /usr/local/bin/
 INCLUDES_DIR = /usr/local/include/
 SINCLUDES_DIR= /usr/include/
@@ -47,7 +49,9 @@ endif
 
 BUILD_DIR = build/$(BUILD_MODE)/
 OBJ_DIR = build/$(BUILD_MODE)_obj/
+TEST_OBJ_DIR = build/test_obj/
 LIST = $(addprefix $(BUILD_DIR), $(BINS))
+LIST += $(addprefix $(BUILD_DIR), $(TEST_BINS))
 LIBS = -L/usr/lib -L$(OBJ_DIR) -L$(XLIBS_DIR) -L$(LIBS_DIR) -L/usr/lib64/ -Wl,--build-id -Wl,-rpath,$(XLIBS_DIR):$(LIBS_DIR):/usr/lib64/ -lstdc++ -lcjson -lfims 
 #-lopendnp3 -lopenpal -lasiopal -lasiodnp3 -lpthread
 LIBS += -lssl -lssl3
@@ -78,13 +82,19 @@ all:	$(BLIST)
 $(BUILD_DIR)ess_basics: $(OBJ_DIR)ess_basics.o 
 	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS)
 
- 
+
+$(BUILD_DIR)test_assetUri: $(TEST_OBJ_DIR)test_assetUri.o $(OBJ_DIR)assetUri.o
+	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS)
+
+$(TEST_OBJ_DIR)%.o: $(PROJECT_ROOT)test/%.cpp
+	$(CXX) -c $(CPPFLAGS) -o $@ $< $(INCLUDES_BUILD)
+
 $(OBJ_DIR)%.o: $(PROJECT_ROOT)src/%.cpp
 	$(CXX) -c $(CPPFLAGS) -o $@ $< $(INCLUDES_BUILD)
 
 .PHONY: build nobuild okbuild
 build:
-	mkdir -p $(BUILD_DIR) $(OBJ_DIR)
+	mkdir -p $(BUILD_DIR) $(OBJ_DIR) $(TEST_OBJ_DIR)
 nobuild:
 	mkdir -p NO_$(BUILD_DIR) $(OBJ_DIR)
 okbuild:
