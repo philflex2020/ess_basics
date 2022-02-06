@@ -2,8 +2,9 @@
  AssetUri
  uri decoder
  */
- #include <vector>
-
+#include <vector>
+#include <ostream>
+#include <iostream>
 
 #pragma once
 
@@ -13,8 +14,12 @@ public:
     assetUri(const char* uri, const char* var= nullptr);
     ~assetUri();
     void setup();
+    void setup(const char* uri, const char* var);
     int setupUriVec();
+    int setupVarVec();
     void single();
+    void show();
+
     char* pullOneUri(int idx);
     char* pullPfrag(int idx);
     char* pullPvar(int idx);
@@ -35,6 +40,7 @@ public:
     char* sVar;
 
     std::vector<char *> uriVec;
+    std::vector<char *> varVec;
     int index;
     bool setValue;
 

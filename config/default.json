@@ -1,0 +1,22 @@
+{
+	"id": "faults",
+	"offset": 10,
+	"name": "BESS Container #1 Fault Flag",
+	"uri": "/assets/ess/ess_1",
+    "data1":{
+        "name":"mydata1",
+        "value":345
+    },
+    "data2":{
+        "name":"mydata2",
+        "value":345,
+        "data2.1": {
+            "name":"mydata2.1",
+            "value":345
+        }
+    },
+    "array1":[
+        {"item100":100},
+        {"item200":200}
+    ]
+}

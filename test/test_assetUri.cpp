@@ -11,16 +11,18 @@
  *    
  ******************************************************/
 
-#include <ostream>
-#include <iostream>
+
 
 #include "assetUri.h"
 
 
  int main(int argc, char*argv[])
  {
-     std::cout << " hello" << std::endl;
-     assetUri ("/foo:fu@#p");
-     return 0;
+    std::cout << " hello" << std::endl;
+    assetUri my("/foo:one:two@p");
+    my.show();
+
+
+    return 0;
  }
  

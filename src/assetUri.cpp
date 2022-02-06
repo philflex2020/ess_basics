@@ -24,18 +24,15 @@ struct cstr{ const char* str;};
  ***********************************************/
 assetUri::assetUri(const char* uri, const char* var)
 {
-    Uri = strdup(uri);
     sUri = nullptr;
-    origuri = strdup(uri);
     origvar = nullptr;
     vecUri = nullptr;
-    if(var)origvar = strdup(var);
-    nfrags = getNfrags();
+    //nfrags = getNfrags();
     Var = nullptr;
     Param = nullptr;
     index = -1;
     setValue = true;
-    setup();
+    setup(uri, var);
 }
 
 assetUri::~assetUri()
@@ -70,8 +67,22 @@ void assetUri::single(void)
     }
 }
 
-void assetUri::setup(void)
+void assetUri::show(void )
 {
+    std::cout << "uri :[" << Uri <<"]"<< std::endl;
+    std::cout << "var :[" << Var <<"]"<< std::endl;
+    std::cout << "param :[" << Param <<"]"<< std::endl;
+}
+// comp:a:b:c
+// Var == c but there is a vec with c:b:a on it 
+//var can become a vec
+void assetUri::setup(const char* uri, const char* var)
+{
+    Uri = strdup(uri);
+    origuri = strdup(uri);
+    if(var)origvar = strdup(var);
+    nfrags = getNfrags();
+    index = -1;
     char *sp = strstr(Uri,(char*)":");
     if(sp)
     {
@@ -151,6 +162,34 @@ void assetUri::setup(void)
     // now search for an index in param /a/b/c:d[23]  
     
 
+}
+// do this after discovering var
+int assetUri::setupVarVec()
+{
+    if(varVec.size() > 0)
+        return (int)varVec.size();
+    char* spUri  = strdup(Var);
+    char* sp  = spUri;//strdup(Var);
+    char *sp1;
+    sp++;
+    do
+    {
+        sp1 = strstr(sp,(char*)":");
+        if(sp1)
+        {
+            *sp1++ = 0;
+            varVec.push_back(sp);
+            if (1) printf("push back [%s]", sp);
+            sp = sp1;
+        }
+    } while(sp1 && (sp1[0] != '@'));
+    if(sp!=spUri)
+    {
+        varVec.push_back(sp);
+        if (1) printf("push back last [%s]", sp);
+
+    }
+    return (int)varVec.size();
 }
 
 int assetUri::setupUriVec()
