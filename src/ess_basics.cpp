@@ -95,8 +95,6 @@ int split_delim(std::vector<std::string>&v, const std::string& s, char c);
 //     };
 // };
 
-
-
 void doExit()
 {
     cout << "on exit map size :" << dbSjMap.size()<< std::endl;
@@ -106,7 +104,9 @@ void doExit()
         if(db)
         {
             db->getroot();
-            cout << " root ["<<db->root<<"] name ["<< db->name<<"] depth :" << db->depth << std::endl; 
+            cout << " root ["<<db->root<<"] name ["<< db->name<<"] depth :[" << db->depth << "] dbtype :["<<db->dbtype<<"]"<<std::endl; 
+            //delete db;
+            dbSjMap[xx.first] = nullptr;
         }
     }
 }
@@ -352,7 +352,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                             base->parent->update = true;
                             if(base->parent->dbval != base->dbval)
                             {
-                                delete base->parent->dbval;
+                                //delete base->parent->dbval;
                                 base->parent->dbval = base->dbval;
                             }
                         }
@@ -376,7 +376,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                             base->parent->update = true;
                             if(base->parent->dbval != base->dbval)
                             {
-                                delete base->parent->dbval;
+                                //delete base->parent->dbval;
                                 base->parent->dbval = base->dbval;
                             }
                         }
@@ -396,7 +396,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                             base->parent->update = true;
                             if(base->parent->dbval != base->dbval)
                             {
-                                delete base->parent->dbval;
+                                //delete base->parent->dbval;
                                 base->parent->dbval = base->dbval;
                             }
                         }
@@ -415,7 +415,7 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                             base->parent->update = true;
                             if(base->parent->dbval != base->dbval)
                             {
-                                delete base->parent->dbval;
+                                //delete base->parent->dbval;
                                 base->parent->dbval = base->dbval;
                             }
                         }
@@ -580,8 +580,12 @@ char** getSubs(int &idx, char* in);
 
 int main(int argc, char *argv[])
 {
-    //dbSj* base2 = new dbSj;
-    //if(base2)return 0;
+    // dbSj* base2 = new dbSj;  // 232
+    // if(base2)
+    // {
+    //     delete base2;
+    //     return 0;
+    // }
 
     fims* p_fims;
     p_fims = new fims();

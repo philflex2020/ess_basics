@@ -28,6 +28,7 @@ dbSj(){
     dbtype = DB_NONE;
     dbval = new dbVal;
     dbval->valuestring =  "";
+    origdbval = dbval;
     depth = 0;
     state = 0;
     item = 0;
@@ -44,8 +45,9 @@ dbSj(int depth, dbSj * p){
     //valuestring = "";
     dbtype = DB_NONE;
     dbval = new dbVal;
+    origdbval = dbval;
+
     dbval->valuestring =  "";
-   
     depth = depth+1;
     update = false;
     dbSjMap[this] = this;
@@ -54,9 +56,11 @@ dbSj(int depth, dbSj * p){
 
 ~dbSj(){
     std::cout << " deleteing ["<<name<<"]"<< std::endl;
-    //if(dbval)
-    //    delete dbval;
+    if(origdbval)
+        delete origdbval;
     };
+
+
     std::string name;
     // todo try one of these
     std::vector<std::vector<dbVal*>> svalpvec;
@@ -74,6 +78,7 @@ dbSj(int depth, dbSj * p){
     //dbSj* child; 
     dbSj* parent;
     dbVal* dbval;
+    dbVal* origdbval;
 
     int depth;  // depth of 2 has a value (in a param)
     
@@ -206,6 +211,11 @@ dbSj(int depth, dbSj * p){
 
     dbSj* adddbSj(const char* name)
     {
+        if((name == nullptr) || (strlen(name)== 0))
+        {
+            name = "no Name"; 
+        }
+
         dbSj*db = nullptr;
         if(dmap.find(name) == dmap.end())
         {
