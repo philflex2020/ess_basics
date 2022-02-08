@@ -2,10 +2,20 @@
 #include <vector>
 #include <string>
 
-#pragma once
+#ifndef DBSJ_TYPE
+#define DBSJ_TYPE
+
+//#pragma once
 // todo 
 //    track owners only delete when owners are all gone
 //    add set/get val with locks
+// baseUtils
+int split_delim(std::vector<std::string>&v, const std::string& s, char c);
+
+class dbSj;
+
+static std::map<dbSj*,dbSj*> dbSjMap;
+
 class dbSj {
 public:
 dbSj(){
@@ -43,7 +53,7 @@ dbSj(int depth, dbSj * p){
 
 
 ~dbSj(){
-    cout << " deleteing ["<<name<<"]"<< std::endl;
+    std::cout << " deleteing ["<<name<<"]"<< std::endl;
     //if(dbval)
     //    delete dbval;
     };
@@ -243,3 +253,5 @@ dbSj(int depth, dbSj * p){
 
 
 } dbSj_t;
+
+#endif

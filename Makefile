@@ -79,7 +79,7 @@ all:	$(BLIST)
 #	$(CXX) -c $(CPPFLAGS) -fpic -o $@ $< $(INCLUDES_BUILD)
 
 
-$(BUILD_DIR)ess_basics: $(OBJ_DIR)ess_basics.o 
+$(BUILD_DIR)ess_basics: $(OBJ_DIR)ess_basics.o $(OBJ_DIR)baseUtils.o 
 	$(CXX) -o $@ $^ $(INCLUDES) $(LIBS)
 
 
