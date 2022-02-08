@@ -348,7 +348,14 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     {
                         std::cout << "updating value " << std::endl;
                         if(base->parent)
+                        {
                             base->parent->update = true;
+                            if(base->parent->dbval != base->dbval)
+                            {
+                                delete base->parent->dbval;
+                                base->parent->dbval = base->dbval;
+                            }
+                        }
                     }
                 }
                 //base->update = true;
@@ -548,39 +555,7 @@ void parse_print_input(const char* fname)
 // // split up the string /a:/b: into the subs** that we need
 // // get the list of subs
 char** getSubs(int &idx, char* in);
-// {
-//     idx = 1;
-//     char *spin = strdup(in) ;
-//     char*sp = spin;
-//     std::cout << "spin = [" << spin << "]" << std::endl;
-//     char ** subs = nullptr;
-//     while (*sp)
-//     {
-//         if(*sp == ':')
-//         {
-//             *sp = 0;
-//             idx++;
-//             sp++;
-//         }
-//         sp++;
-//     }
-//     subs = (char**)malloc(sizeof(char*) * idx);
 
-//     sp = spin;
-//     int i = 0;
-//     while (i < idx)
-//     {
-//         subs[i] =  sp;
-//         std::cout << "sp = [" << sp << "]" << std::endl;
-
-//         sp += strlen(sp);
-//         sp++;
-//         i++;
-//     }
-//     //free(spin);
-    
-//     return subs;
-// }
 
 int main(int argc, char *argv[])
 {

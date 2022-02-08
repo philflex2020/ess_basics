@@ -8,7 +8,7 @@
 #include <sstream>
 #include "simdjson.h" // for json parsing
 //
-//#include "dbVal.h"
+#include "dbVal.h"
 //#include "dbSj.h"
 
 #ifndef FPS_ERROR_PRINT 
