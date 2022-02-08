@@ -372,7 +372,14 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     {
                         std::cout << "updating value " << std::endl;
                         if(base->parent)
+                        {
                             base->parent->update = true;
+                            if(base->parent->dbval != base->dbval)
+                            {
+                                delete base->parent->dbval;
+                                base->parent->dbval = base->dbval;
+                            }
+                        }
                     }
                 }
             break;
@@ -385,7 +392,14 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     {
                         std::cout << "updating value " << std::endl;
                         if(base->parent)
+                        {
                             base->parent->update = true;
+                            if(base->parent->dbval != base->dbval)
+                            {
+                                delete base->parent->dbval;
+                                base->parent->dbval = base->dbval;
+                            }
+                        }
                     }
                 }
             break;
@@ -397,7 +411,14 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                     {
                         std::cout << "updating value " << std::endl;
                         if(base->parent)
+                        {
                             base->parent->update = true;
+                            if(base->parent->dbval != base->dbval)
+                            {
+                                delete base->parent->dbval;
+                                base->parent->dbval = base->dbval;
+                            }
+                        }
                     }
                 }
             break;
