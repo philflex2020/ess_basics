@@ -341,7 +341,11 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             case simdjson::ondemand::json_type::number:
                 // assume it fits in a double
                 base->dbval->valuedouble = element.get_double();
-                base->dbtype=dbSj::DB_DOUBLE;
+                if (base->dbtype == dbSj::DB_NONE)
+                    base->dbtype=dbSj::DB_DOUBLE;
+                // set value type anyway
+                base->dvtype=dbSj::DB_DOUBLE;
+
                 if(base->parent)
                 {
                     if (base->name == "value")
@@ -365,7 +369,10 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
                 //eos = 
                 find_end_of_string(skey, element.get_raw_json_string().raw());
                 base->dbval->valuestring = skey;
-                base->dbtype=dbSj::DB_STRING;
+                if (base->dbtype == dbSj::DB_NONE)
+                    base->dbtype=dbSj::DB_STRING;
+                // set value type anyway
+                base->dvtype=dbSj::DB_STRING;
                 if(base->parent)
                 {
                     if (base->name == "value")
@@ -385,7 +392,10 @@ dbSj* recursive_load_json(dbSj*base, int depth, simdjson::ondemand::value elemen
             break;
             case simdjson::ondemand::json_type::boolean:
                 base->dbval->valuebool = element.get_bool();
-                base->dbtype=dbSj::DB_BOOL;
+                if (base->dbtype == dbSj::DB_NONE)
+                    base->dbtype=dbSj::DB_BOOL;
+                // set value type anyway
+                base->dvtype=dbSj::DB_BOOL;
                 if(base->parent)
                 {
                     if (base->name == "value")
