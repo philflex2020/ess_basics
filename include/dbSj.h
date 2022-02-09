@@ -26,6 +26,7 @@ dbSj(){
     //valueint = 0;
     //valuestring = "";
     dbtype = DB_NONE;
+    dvtype = DB_NONE;
     dbval = new dbVal;
     dbval->valuestring =  "";
     origdbval = dbval;
@@ -44,6 +45,7 @@ dbSj(int depth, dbSj * p){
     //valueint = 0;
     //valuestring = "";
     dbtype = DB_NONE;
+    dvtype = DB_NONE;
     dbval = new dbVal;
     origdbval = dbval;
 
@@ -70,6 +72,7 @@ dbSj(int depth, dbSj * p){
     // todo move this out to dbVal
     enum dtype { DB_BASE, DB_NONE, DB_OBJ,DB_ARRAY,DB_STRING,DB_DOUBLE, DB_INT,DB_BOOL,DB_NULL,DB_END};
     dtype dbtype;
+    dtype dvtype;
 
     // thse are the kids
     std::vector<dbSj*> dvec;
